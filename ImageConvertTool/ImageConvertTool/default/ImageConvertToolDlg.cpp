@@ -191,6 +191,14 @@ void CImageConvertToolDlg::OnBnClickedButtonConvert()
 {
 	CString strFolderPath;
 	GetDlgItemText(IDC_PATH, strFolderPath);
+
+	if (strFolderPath == L"")
+	{
+		AfxMessageBox(L"Error Input Folder Path", MB_OK | MB_ICONHAND);
+		return;
+	}
+		
+
 	path FolderPath = string(CT2CA(strFolderPath));
 
 	int SuccessCount = 0;
