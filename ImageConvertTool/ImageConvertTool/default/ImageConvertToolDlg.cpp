@@ -193,6 +193,10 @@ void CImageConvertToolDlg::OnBnClickedButtonConvert()
 	GetDlgItemText(IDC_PATH, strFolderPath);
 	path FolderPath = string(CT2CA(strFolderPath));
 
+	int SuccessCount = 0;
+	int FailCount = 0;
+	int MaxCount = 0;
+
 	if (true == AllocConsole()) 
 	{
 		FILE* nfp[3];
@@ -210,19 +214,22 @@ void CImageConvertToolDlg::OnBnClickedButtonConvert()
 		char fileName[MAX_PATH] = "";
 		char ext[MAX_PATH] = "";
 		char ImagePath[MAX_PATH] = "";
+
 		TCHAR tempPath[MAX_PATH] = L"";
 		TCHAR savePath[MAX_PATH] = L"";
 
 		HRESULT hr = 0;
-		ScratchImage scImage;
+		ScratchImage scrImage;
 		ScratchImage mipChain;
 		ScratchImage compChain;
-		ScratchImage convertChain;
+		ScratchImage decompChain;
 
 		_splitpath_s(path, drive, MAX_PATH, dir, MAX_PATH, fileName, MAX_PATH, ext, MAX_PATH);
 
 		if (0 == strcmp(ext, ".tga") || 0 == strcmp(ext, ".TGA"))
 		{
+			
+
 			strcat_s(ImagePath, drive);
 			strcat_s(ImagePath, dir);
 			strcat_s(ImagePath, fileName);
@@ -233,37 +240,64 @@ void CImageConvertToolDlg::OnBnClickedButtonConvert()
 
 			MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, ImagePath, strlen(ImagePath), tempPath, 256);
 
-			hr = DirectX::LoadFromTGAFile(tempPath, TGA_FLAGS_NONE, nullptr, scImage);
+			hr = DirectX::LoadFromTGAFile(tempPath, TGA_FLAGS_NONE, nullptr, scrImage);
 
-			StrCat(savePath, L".dds");
+			if (scrImage.GetMetadata().format == DXGI_FORMAT_R8G8B8A8_UNORM)
+			{
+				++MaxCount;
 
+				StrCat(savePath, L".dds");
 
-			hr == GenerateMipMaps(scImage.GetImages(), scImage.GetImageCount(), scImage.GetMetadata(), TEX_FILTER_DEFAULT, 0, mipChain);
-			if (hr == S_OK)
-				printf("Success GenerateMipMaps Image");
-
-
-			hr = Compress(mipChain.GetImages(), mipChain.GetImageCount(),
-				mipChain.GetMetadata(), DXGI_FORMAT_BC3_UNORM,
-				TEX_COMPRESS_DEFAULT, TEX_THRESHOLD_DEFAULT,
-				compChain);
-			if (hr == S_OK)
-				printf("Success Compress Image");
-
-			/*hr == Convert(compChain.GetImages(), compChain.GetImageCount(), compChain.GetMetadata(), DXGI_FORMAT_BC3_UNORM, TEX_FILTER_DEFAULT, TEX_THRESHOLD_DEFAULT, convertChain);
-			if (hr == S_OK)
-				printf("Success Convert Image");*/
-
+				hr == GenerateMipMaps(scrImage.GetImages(), scrImage.GetImageCount(), scrImage.GetMetadata(), TEX_FILTER_DEFAULT, 0, mipChain);
+				if (hr == S_OK)
+				{
+					printf("Success GenerateMipMaps Image");
+					printf("\n");
+				}
+				else
+				{
+					printf("Fail GenerateMipMaps Image");
+					printf("\n");
+				}
 
 
+				hr = Compress(mipChain.GetImages(), mipChain.GetImageCount(),
+					mipChain.GetMetadata(), DXGI_FORMAT_BC3_UNORM,
+					TEX_COMPRESS_DEFAULT, TEX_THRESHOLD_DEFAULT,
+					compChain);
+				if (hr == S_OK)
+				{
+					printf("Success Compress Image");
+					printf("\n");
+				}
+				else
+				{
+					printf("Fail Compress Image");
+					printf("\n");
+				}
 
+				hr = SaveToDDSFile(compChain.GetImages(), compChain.GetImageCount(), compChain.GetMetadata(), DDS_FLAGS_NONE, savePath);
 
-			hr = SaveToDDSFile(compChain.GetImages(), compChain.GetImageCount(), compChain.GetMetadata(), DDS_FLAGS_NONE, savePath);
-			if (hr == S_OK)
-				printf("Success Convert Image");
+				if (hr == S_OK)
+				{
+					printf("Success Save Image");
+					printf("\n");
+					++SuccessCount;
+				}
+				else
+				{
+					printf("Fail Save Image");
+					printf("\n");
+					++FailCount;
+				}
+			}
+
+			
 		}
-		/*else if (0 == strcmp(ext, ".png") || 0 == strcmp(ext, ".PNG"))
+		else if (0 == strcmp(ext, ".png") || 0 == strcmp(ext, ".PNG"))
 		{
+			
+
 			strcat_s(ImagePath, drive);
 			strcat_s(ImagePath, dir);
 			strcat_s(ImagePath, fileName);
@@ -274,10 +308,62 @@ void CImageConvertToolDlg::OnBnClickedButtonConvert()
 
 			MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, ImagePath, strlen(ImagePath), tempPath, 256);
 
-			hr = DirectX::LoadFromWICFile(tempPath, WIC_FLAGS_NONE, nullptr, scImage);
+			hr = DirectX::LoadFromWICFile(tempPath, WIC_FLAGS_NONE, nullptr, scrImage);
+
+			if (scrImage.GetMetadata().format == DXGI_FORMAT_B8G8R8A8_UNORM)
+			{
+				++MaxCount;
+
+				StrCat(savePath, L".dds");
+
+				hr == GenerateMipMaps(scrImage.GetImages(), scrImage.GetImageCount(), scrImage.GetMetadata(), TEX_FILTER_DEFAULT, 0, mipChain);
+				if (hr == S_OK)
+				{
+					printf("Success GenerateMipMaps Image");
+					printf("\n");
+				}
+				else
+				{
+					printf("Fail GenerateMipMaps Image");
+					printf("\n");
+				}
+
+
+				hr = Compress(mipChain.GetImages(), mipChain.GetImageCount(),
+					mipChain.GetMetadata(), DXGI_FORMAT_BC3_UNORM,
+					TEX_COMPRESS_DEFAULT, TEX_THRESHOLD_DEFAULT,
+					compChain);
+				if (hr == S_OK)
+				{
+					printf("Success Compress Image");
+					printf("\n");
+				}
+				else
+				{
+					printf("Fail Compress Image");
+					printf("\n");
+				}
+
+				hr = SaveToDDSFile(compChain.GetImages(), compChain.GetImageCount(), compChain.GetMetadata(), DDS_FLAGS_NONE, savePath);
+
+				if (hr == S_OK)
+				{
+					printf("Success Save Image");
+					printf("\n");
+					++SuccessCount;
+				}
+				else
+				{
+					printf("Fail Save Image");
+					printf("\n");
+					++FailCount;
+				}
+			}
 		}
-		else if (0 == strcmp(ext, ".dds") && 0 == strcmp(ext, ".DDS"))
+		else if (0 == strcmp(ext, ".dds") || 0 == strcmp(ext, ".DDS"))
 		{
+			
+
 			strcat_s(ImagePath, drive);
 			strcat_s(ImagePath, dir);
 			strcat_s(ImagePath, fileName);
@@ -288,11 +374,75 @@ void CImageConvertToolDlg::OnBnClickedButtonConvert()
 
 			MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, ImagePath, strlen(ImagePath), tempPath, 256);
 
-			hr = DirectX::LoadFromDDSFile(tempPath, DDS_FLAGS_NONE, nullptr, scImage);
-		}*/
+			hr = DirectX::LoadFromDDSFile(tempPath, DDS_FLAGS_NONE, nullptr, scrImage);
 
-		
+			if (scrImage.GetMetadata().format == DXGI_FORMAT_BC5_UNORM)
+			{
+				++MaxCount;
+
+				StrCat(savePath, L".dds");
+
+				
+				
+				hr = Decompress(scrImage.GetImages(), scrImage.GetImageCount(), scrImage.GetMetadata(), DXGI_FORMAT_UNKNOWN, decompChain);
+
+				hr == GenerateMipMaps(decompChain.GetImages(), decompChain.GetImageCount(), decompChain.GetMetadata(), TEX_FILTER_DEFAULT, 0, mipChain);
+				if (hr == S_OK)
+				{
+					printf("Success GenerateMipMaps Image");
+					printf("\n");
+				}
+				else
+				{
+					printf("Fail GenerateMipMaps Image");
+					printf("\n");
+				}
+
+				hr = Compress(mipChain.GetImages(), mipChain.GetImageCount(),
+					mipChain.GetMetadata(), DXGI_FORMAT_BC1_UNORM,
+					TEX_COMPRESS_DEFAULT, TEX_THRESHOLD_DEFAULT,
+					compChain);
+				if (hr == S_OK)
+				{
+					printf("Success Compress Image");
+					printf("\n");
+				}
+				else
+				{
+					printf("Fail Compress Image");
+					printf("\n");
+				}
+
+				hr = SaveToDDSFile(compChain.GetImages(), compChain.GetImageCount(), compChain.GetMetadata(), DDS_FLAGS_NONE, savePath);
+
+				if (hr == S_OK)
+				{
+					printf("Success Save Image");
+					printf("\n");
+					++SuccessCount;
+				}
+				else
+				{
+					printf("Fail Save Image");
+					printf("\n");
+					++FailCount;
+				}
+			}
+		}
+
+
 	}
+
+	CString strTemp = L"Success Count ";
+
+	CString strSuccessCount; 
+	strSuccessCount.Format(_T("%d"), SuccessCount);
+
+	CString strMaxCount;
+	strMaxCount.Format(_T("%d"), MaxCount);
+
+	strTemp = strTemp + L" ( " + strSuccessCount + L" / " + strMaxCount + L" ) ";
+	AfxMessageBox((TCHAR*)(LPCTSTR)strTemp, MB_OK | MB_ICONQUESTION);
 }
 
 
